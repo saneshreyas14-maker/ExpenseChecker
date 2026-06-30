@@ -43,6 +43,10 @@
                     <i data-lucide="pie-chart"></i>
                     <span>Budgets & Categories</span>
                 </button>
+                <button class="nav-item" id="btn-nav-planner">
+                    <i data-lucide="check-square"></i>
+                    <span>Planner & Notes</span>
+                </button>
             </nav>
 
             <div class="sidebar-footer">
@@ -312,6 +316,63 @@
                             <div class="chart-container">
                                 <canvas id="budget-bar-chart"></canvas>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Planner & Notes View -->
+            <section class="view-section" id="view-planner">
+                <div class="planner-view-grid">
+                    <!-- Left: Self-Chat / Reminders Feed -->
+                    <div class="dashboard-card glass">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">My Reminders & Notes</h3>
+                                <p class="card-subtitle">Chat stream with yourself for thoughts and quick reminders</p>
+                            </div>
+                            <i data-lucide="message-square" class="text-primary"></i>
+                        </div>
+                        <div class="card-body chat-card-body">
+                            <div class="chat-messages-container" id="chat-messages-list">
+                                <!-- Messages dynamically populated by JS -->
+                            </div>
+                            <form id="chat-form" class="chat-input-form">
+                                <input type="text" id="chat-input" placeholder="Type a reminder or note..." required autocomplete="off">
+                                <button type="submit" class="btn btn-primary btn-icon" style="flex-shrink: 0; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right: Todo Checklist -->
+                    <div class="dashboard-card glass">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Interactive Checklist</h3>
+                                <p class="card-subtitle">Create and track personal todo lists</p>
+                            </div>
+                            <div class="checklist-progress-badge" style="background: var(--success-glow); color: var(--success); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid var(--success-glow);">
+                                <span id="checklist-progress-text">0 of 0 completed</span>
+                            </div>
+                        </div>
+                        <div class="card-body flex-column-layout">
+                            <div class="progress-bar-container mb-4" style="margin-bottom: 1.25rem;">
+                                <div class="progress-bar" id="checklist-progress-bar" style="width: 0%; background-color: var(--success);"></div>
+                            </div>
+                            
+                            <div class="checklist-items-container scrollable-container" id="checklist-items-list" style="max-height: 280px; display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+                                <!-- Checkbox items dynamically populated by JS -->
+                            </div>
+
+                            <form id="checklist-form" class="checklist-input-form" style="display: flex; gap: 0.75rem;">
+                                <input type="text" id="checklist-input" placeholder="Add a new task..." required autocomplete="off" style="flex-grow: 1;">
+                                <button type="submit" class="btn btn-primary" style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    <i data-lucide="plus"></i>
+                                    <span>Add</span>
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>

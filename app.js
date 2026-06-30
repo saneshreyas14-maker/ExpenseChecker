@@ -6,6 +6,8 @@
 let state = {
     categories: [],
     transactions: [],
+    notes: [],
+    tasks: [],
     startingBalance: 0.00,
     currentView: 'dashboard',
     activeTransactionId: null,
@@ -54,6 +56,18 @@ async function loadDatabaseData() {
         if (!transactionsRes.ok) throw new Error('Failed to load transactions');
         state.transactions = await transactionsRes.json();
 
+        // Fetch Planner Notes
+        const notesRes = await fetch('/api/notes');
+        if (notesRes.ok) {
+            state.notes = await notesRes.json();
+        }
+
+        // Fetch Checklist Tasks
+        const tasksRes = await fetch('/api/tasks');
+        if (tasksRes.ok) {
+            state.tasks = await tasksRes.json();
+        }
+
         renderCategoryDropdowns();
     } catch (err) {
         console.error('Error connecting to backend database APIs:', err);
@@ -90,6 +104,10 @@ function switchView(viewName) {
         document.getElementById('btn-nav-budgets').classList.add('active');
         document.getElementById('view-budgets').classList.add('active');
         renderBudgetsView();
+    } else if (viewName === 'planner') {
+        document.getElementById('btn-nav-planner').classList.add('active');
+        document.getElementById('view-planner').classList.add('active');
+        renderPlannerView();
     }
 
     lucide.createIcons();
@@ -496,6 +514,123 @@ function renderCategoryDropdowns() {
 }
 
 // ==========================================================================
+// Planner & Checklists View
+// ==========================================================================
+
+function renderPlannerView() {
+    // 1. Render Personal self notes
+    const notesContainer = document.getElementById('chat-messages-list');
+    notesContainer.innerHTML = '';
+
+    if (state.notes.length === 0) {
+        notesContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 3rem 1rem; font-size: 0.85rem;">No notes yet. Type a reminder below to post in your stream.</div>`;
+    } else {
+        state.notes.forEach(note => {
+            const timeStr = note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const dateStr = note.created_at ? new Date(note.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+            
+            const msgWrapper = document.createElement('div');
+            msgWrapper.className = 'chat-bubble-wrapper self';
+            msgWrapper.innerHTML = `
+                <div class="chat-bubble">
+                    ${escapeHtml(note.message)}
+                </div>
+                <div class="chat-bubble-meta">
+                    <span>${dateStr} at ${timeStr}</span>
+                    <button class="btn-delete-note" onclick="deleteNote(${note.id})" title="Delete Reminder">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+            `;
+            notesContainer.appendChild(msgWrapper);
+        });
+        
+        // Scroll to the bottom of notes container
+        setTimeout(() => {
+            notesContainer.scrollTop = notesContainer.scrollHeight;
+        }, 50);
+    }
+
+    // 2. Render Checklist tasks
+    const checklistContainer = document.getElementById('checklist-items-list');
+    checklistContainer.innerHTML = '';
+
+    if (state.tasks.length === 0) {
+        checklistContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 3rem 1rem; font-size: 0.85rem;">No tasks created. Add a task below to start your checklist.</div>`;
+    } else {
+        state.tasks.forEach(task => {
+            const completedClass = task.is_completed ? 'completed' : '';
+            const row = document.createElement('div');
+            row.className = `checklist-item-row ${completedClass}`;
+            row.innerHTML = `
+                <div class="checklist-item-left" onclick="toggleTask(${task.id}, ${task.is_completed})">
+                    <div class="checklist-checkbox">
+                        <i data-lucide="check"></i>
+                    </div>
+                    <span class="checklist-task-text">${escapeHtml(task.task_text)}</span>
+                </div>
+                <button class="btn-icon-sm delete" onclick="deleteTask(${task.id})" title="Delete Task" style="margin-left: 0.75rem;">
+                    <i data-lucide="trash-2"></i>
+                </button>
+            `;
+            checklistContainer.appendChild(row);
+        });
+    }
+
+    // 3. Compute checklist progress
+    const totalTasks = state.tasks.length;
+    const completedTasks = state.tasks.filter(t => t.is_completed).length;
+    const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    document.getElementById('checklist-progress-text').textContent = `${completedTasks} of ${totalTasks} completed`;
+    document.getElementById('checklist-progress-bar').style.width = `${progressPercent}%`;
+
+    lucide.createIcons();
+}
+
+window.deleteNote = async function(id) {
+    try {
+        const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete note');
+        showToast('Reminder note deleted', 'info');
+        await loadDatabaseData();
+        renderPlannerView();
+    } catch (err) {
+        console.error(err);
+        showToast('Error deleting reminder note.', 'danger');
+    }
+};
+
+window.toggleTask = async function(id, isCompleted) {
+    try {
+        const res = await fetch(`/api/tasks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_completed: !isCompleted })
+        });
+        if (!res.ok) throw new Error('Failed to update task state');
+        await loadDatabaseData();
+        renderPlannerView();
+    } catch (err) {
+        console.error(err);
+        showToast('Error updating checklist task.', 'danger');
+    }
+};
+
+window.deleteTask = async function(id) {
+    try {
+        const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete checklist task');
+        showToast('Checklist task removed.', 'info');
+        await loadDatabaseData();
+        renderPlannerView();
+    } catch (err) {
+        console.error(err);
+        showToast('Error removing task from checklist.', 'danger');
+    }
+};
+
+// ==========================================================================
 // Charting Implementations (Chart.js)
 // ==========================================================================
 
@@ -542,24 +677,25 @@ function renderExpenseDonutChart() {
 
     // Custom Legend render
     const legendContainer = document.getElementById('chart-custom-legend');
-    legendContainer.innerHTML = '';
+    if (legendContainer) {
+        legendContainer.innerHTML = '';
+        labels.forEach((label, idx) => {
+            const val = dataValues[idx];
+            const pct = totalExpensesSum > 0 ? Math.round((val / totalExpensesSum) * 100) : 0;
+            const color = backgroundColors[idx];
 
-    labels.forEach((label, idx) => {
-        const val = dataValues[idx];
-        const pct = totalExpensesSum > 0 ? Math.round((val / totalExpensesSum) * 100) : 0;
-        const color = backgroundColors[idx];
-
-        const item = document.createElement('div');
-        item.className = 'legend-item';
-        item.innerHTML = `
-            <div class="legend-color" style="background-color: ${color}"></div>
-            <div class="legend-info">
-                <span class="legend-name">${escapeHtml(label)}</span>
-                <span class="legend-value">${formatCurrency(val)} (${pct}%)</span>
-            </div>
-        `;
-        legendContainer.appendChild(item);
-    });
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `
+                <div class="legend-color" style="background-color: ${color}"></div>
+                <div class="legend-info">
+                    <span class="legend-name">${escapeHtml(label)}</span>
+                    <span class="legend-value">${formatCurrency(val)} (${pct}%)</span>
+                </div>
+            `;
+            legendContainer.appendChild(item);
+        });
+    }
 
     // Destroy existing chart to prevent hover bugs
     if (expenseChart) {
@@ -745,6 +881,7 @@ function setupEventListeners() {
     document.getElementById('btn-nav-dashboard').addEventListener('click', () => switchView('dashboard'));
     document.getElementById('btn-nav-transactions').addEventListener('click', () => switchView('transactions'));
     document.getElementById('btn-nav-budgets').addEventListener('click', () => switchView('budgets'));
+    document.getElementById('btn-nav-planner').addEventListener('click', () => switchView('planner'));
     document.getElementById('btn-view-all-transactions').addEventListener('click', () => switchView('transactions'));
 
     // Transaction Modal Controls
@@ -780,6 +917,12 @@ function setupEventListeners() {
     document.getElementById('btn-cancel-bulk-modal').addEventListener('click', closeBulkModal);
     document.getElementById('btn-bulk-add-row').addEventListener('click', addBulkRow);
     document.getElementById('btn-save-bulk').addEventListener('click', saveBulkChanges);
+
+    // Planner Chat Submition
+    document.getElementById('chat-form').addEventListener('submit', handleChatFormSubmit);
+
+    // Checklist Task Submition
+    document.getElementById('checklist-form').addEventListener('submit', handleChecklistFormSubmit);
 
     // Filters and Search action
     document.getElementById('search-input').addEventListener('input', () => {
@@ -1193,6 +1336,58 @@ async function saveBulkChanges() {
 }
 
 // ==========================================================================
+// Self-Chat Feed / Tasks Form Submissions
+// ==========================================================================
+
+async function handleChatFormSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    try {
+        const res = await fetch('/api/notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+
+        if (!res.ok) throw new Error('Failed to post reminder note');
+        
+        input.value = '';
+        await loadDatabaseData();
+        renderPlannerView();
+    } catch (err) {
+        console.error(err);
+        showToast('Error sending reminder note.', 'danger');
+    }
+}
+
+async function handleChecklistFormSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('checklist-input');
+    const task_text = input.value.trim();
+    if (!task_text) return;
+
+    try {
+        const res = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_text })
+        });
+
+        if (!res.ok) throw new Error('Failed to add checklist task');
+
+        input.value = '';
+        await loadDatabaseData();
+        renderPlannerView();
+    } catch (err) {
+        console.error(err);
+        showToast('Error adding task to checklist.', 'danger');
+    }
+}
+
+// ==========================================================================
 // Formatting & HTML Utility Helpers
 // ==========================================================================
 
@@ -1209,6 +1404,13 @@ function formatDate(dateStr) {
     const d = new Date(parts[0], parts[1] - 1, parts[2]);
     const options = { month: 'short', day: 'numeric', year: 'numeric' };
     return d.toLocaleDateString('en-US', options);
+}
+
+// Generates dates relative to today
+function getRelativeDate(offsetDays) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().split('T')[0];
 }
 
 function escapeHtml(unsafe) {

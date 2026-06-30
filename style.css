@@ -1257,3 +1257,223 @@ label {
     margin-bottom: 1rem;
 }
 
+/* Planner & Notes Styles */
+.planner-view-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1.5rem;
+}
+
+.chat-card-body {
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+    padding: 1.25rem;
+}
+
+.chat-messages-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.chat-input-form {
+    display: flex;
+    gap: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    flex-shrink: 0;
+}
+
+.chat-input-form input {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.chat-input-form input:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.chat-bubble-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: 85%;
+    position: relative;
+}
+
+.chat-bubble-wrapper.self {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.chat-bubble {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    padding: 0.85rem 1.15rem;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.chat-bubble-wrapper.self .chat-bubble {
+    background: var(--primary-glow);
+    border-color: var(--primary-light);
+    border-radius: var(--radius-lg) 0 var(--radius-lg) var(--radius-lg);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.chat-bubble-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-delete-note {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: var(--transition-fast);
+}
+
+.chat-bubble-wrapper:hover .btn-delete-note {
+    opacity: 1;
+}
+
+.btn-delete-note:hover {
+    color: var(--danger);
+}
+
+.btn-delete-note i {
+    width: 12px;
+    height: 12px;
+}
+
+/* Checklist Todo styles */
+.flex-column-layout {
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+    justify-content: space-between;
+}
+
+.checklist-items-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.25rem;
+}
+
+.checklist-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    transition: var(--transition-fast);
+}
+
+.checklist-item-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.checklist-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    flex-grow: 1;
+}
+
+.checklist-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.checklist-checkbox i {
+    width: 12px;
+    height: 12px;
+    color: white;
+    display: none;
+}
+
+.checklist-item-row.completed .checklist-checkbox {
+    background-color: var(--success);
+    border-color: var(--success);
+}
+
+.checklist-item-row.completed .checklist-checkbox i {
+    display: block;
+}
+
+.checklist-task-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+    user-select: none;
+}
+
+.checklist-item-row.completed .checklist-task-text {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.checklist-input-form {
+    display: flex;
+    gap: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    flex-shrink: 0;
+}
+
+.checklist-input-form input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.checklist-input-form input:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Responsiveness for Planner view */
+@media (max-width: 1100px) {
+    .planner-view-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+

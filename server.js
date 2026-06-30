@@ -225,6 +225,77 @@ app.delete('/api/transactions/:id', async (req, res) => {
     }
 });
 
+// Personal Notes CRUD APIs
+app.get('/api/notes', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM personal_notes ORDER BY created_at ASC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/notes', async (req, res) => {
+    const { message } = req.body;
+    try {
+        const [result] = await pool.query('INSERT INTO personal_notes (message) VALUES (?)', [message]);
+        res.json({ success: true, note: { id: result.insertId, message, created_at: new Date() } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/notes/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM personal_notes WHERE id = ?', [id]);
+        res.json({ success: true, id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Checklist CRUD APIs
+app.get('/api/tasks', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM checklist_tasks ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/tasks', async (req, res) => {
+    const { task_text } = req.body;
+    try {
+        const [result] = await pool.query('INSERT INTO checklist_tasks (task_text) VALUES (?)', [task_text]);
+        res.json({ success: true, task: { id: result.insertId, task_text, is_completed: false } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/tasks/:id', async (req, res) => {
+    const { id } = req.params;
+    const { is_completed } = req.body;
+    try {
+        await pool.query('UPDATE checklist_tasks SET is_completed = ? WHERE id = ?', [is_completed ? 1 : 0, id]);
+        res.json({ success: true, id, is_completed });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/tasks/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM checklist_tasks WHERE id = ?', [id]);
+        res.json({ success: true, id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Default route fallback to index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

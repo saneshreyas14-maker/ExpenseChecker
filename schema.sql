@@ -6,6 +6,8 @@ USE `aurabudget`;
 DROP TABLE IF EXISTS `transactions`;
 DROP TABLE IF EXISTS `categories`;
 DROP TABLE IF EXISTS `settings`;
+DROP TABLE IF EXISTS `checklist_tasks`;
+DROP TABLE IF EXISTS `personal_notes`;
 
 -- Settings Table
 CREATE TABLE `settings` (
@@ -58,3 +60,32 @@ INSERT INTO `transactions` (`id`, `description`, `amount`, `type`, `category_id`
 ('t-8', 'Cinemark Movies & Snacks', 38.50, 'expense', 'cat-4', DATE_SUB(CURRENT_DATE(), INTERVAL 5 DAY)),
 ('t-9', 'Freelance Design Work', 650.00, 'income', 'cat-6', DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)),
 ('t-10', 'Uber Ride', 24.00, 'expense', 'cat-3', DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY));
+
+-- Personal Notes Table
+CREATE TABLE `personal_notes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `message` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Checklist Tasks Table
+CREATE TABLE `checklist_tasks` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `task_text` VARCHAR(255) NOT NULL,
+    `is_completed` BOOLEAN DEFAULT FALSE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed Notes
+INSERT INTO `personal_notes` (`message`) VALUES
+('Reminder: Review monthly savings rate and transfer $200 to investments.'),
+('Remember to cancel movie streaming subscription trial by Friday.'),
+('Ideas: Look for cash back credit cards for dining out.');
+
+-- Seed Checklist
+INSERT INTO `checklist_tasks` (`task_text`, `is_completed`) VALUES
+('File quarterly tax forms', FALSE),
+('Pay credit card statement', TRUE),
+('Update rent budget limit', FALSE),
+('Reconcile freelance invoice deposits', TRUE);
+
