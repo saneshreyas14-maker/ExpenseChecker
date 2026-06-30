@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sleek, modern glassmorphic expense tracker and personal budgeting assistant with individual category limits and visual charts.">
+    <title>AuraBudget — Premium Expense & Budget Tracker</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation / Brand Panel -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i data-lucide="wallet" class="brand-icon"></i>
+                </div>
+                <div>
+                    <h1>AuraBudget</h1>
+                    <span class="brand-subtitle">Smart Personal Finance</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" id="btn-nav-dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" id="btn-nav-transactions">
+                    <i data-lucide="arrow-right-left"></i>
+                    <span>Transactions</span>
+                </button>
+                <button class="nav-item" id="btn-nav-budgets">
+                    <i data-lucide="pie-chart"></i>
+                    <span>Budgets & Categories</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="quick-stats-mini">
+                    <div class="mini-stat">
+                        <span class="mini-label">Savings Rate</span>
+                        <span class="mini-value" id="mini-savings-rate">0%</span>
+                    </div>
+                    <div class="progress-bar-container mini">
+                        <div class="progress-bar" id="mini-savings-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Navigation / Header -->
+            <header class="top-header">
+                <div class="header-search">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Search transactions, tags, categories...">
+                </div>
+                <div class="header-actions">
+                    <div class="date-badge">
+                        <i data-lucide="calendar"></i>
+                        <span id="current-date">June 30, 2026</span>
+                    </div>
+                    <button class="btn btn-primary" id="btn-open-transaction-modal">
+                        <i data-lucide="plus"></i>
+                        <span>Add Transaction</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section class="view-section active" id="view-dashboard">
+                <!-- Overview Stats Row -->
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Net Balance</span>
+                            <div class="stat-icon-wrapper balance">
+                                <i data-lucide="dollar-sign"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="stat-net-balance">$0.00</div>
+                        <div class="stat-trend" id="stat-net-trend">
+                            <i data-lucide="trending-up"></i>
+                            <span>All-time summary</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Monthly Income</span>
+                            <div class="stat-icon-wrapper income">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value text-success" id="stat-total-income">$0.00</div>
+                        <div class="stat-trend text-success">
+                            <span>Expected regular income</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Monthly Expenses</span>
+                            <div class="stat-icon-wrapper expenses">
+                                <i data-lucide="arrow-down-left"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value text-danger" id="stat-total-expenses">$0.00</div>
+                        <div class="stat-trend" id="stat-expenses-limit-label">
+                            <span class="progress-label-text">0% of total budget</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Allocated Budget</span>
+                            <div class="stat-icon-wrapper budget">
+                                <i data-lucide="sliders"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value text-primary" id="stat-total-budget">$0.00</div>
+                        <div class="stat-trend text-muted">
+                            <span>Sum of all category budgets</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Grid -->
+                <div class="dashboard-grid">
+                    <!-- Left: Analytics and Visualizations -->
+                    <div class="dashboard-card glass col-span-2">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Expense Distribution</h3>
+                                <p class="card-subtitle">Where your money goes this month</p>
+                            </div>
+                            <div class="card-actions">
+                                <select class="select-input" id="chart-timeframe">
+                                    <option value="current-month">This Month</option>
+                                    <option value="all-time">All Time</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="expense-donut-chart"></canvas>
+                            </div>
+                            <div class="chart-legend" id="chart-custom-legend">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Quick Category Budgets -->
+                    <div class="dashboard-card glass">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Category Budgets</h3>
+                                <p class="card-subtitle">Individual limits tracker</p>
+                            </div>
+                            <button class="btn btn-secondary btn-icon" id="btn-open-category-modal" title="Manage Categories">
+                                <i data-lucide="settings"></i>
+                            </button>
+                        </div>
+                        <div class="card-body scrollable-container" id="dashboard-budgets-list">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Bottom Left: Recent Activity -->
+                    <div class="dashboard-card glass col-span-2">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Recent Transactions</h3>
+                                <p class="card-subtitle">Your latest financial activity</p>
+                            </div>
+                            <button class="btn btn-text" id="btn-view-all-transactions">
+                                <span>View All</span>
+                                <i data-lucide="arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="transaction-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Category</th>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dashboard-transactions-rows">
+                                        <!-- Populated dynamically by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Right: Budget Status Notification Panel -->
+                    <div class="dashboard-card glass">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Alerts & Insights</h3>
+                                <p class="card-subtitle">Automated budget alerts</p>
+                            </div>
+                            <i data-lucide="bell" class="text-primary"></i>
+                        </div>
+                        <div class="card-body scrollable-container" id="alerts-panel">
+                            <!-- Alerts populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions View -->
+            <section class="view-section" id="view-transactions">
+                <div class="dashboard-card glass">
+                    <div class="card-header stack-mobile">
+                        <div>
+                            <h3 class="card-title">All Transactions</h3>
+                            <p class="card-subtitle" id="transactions-count-label">Showing 0 transactions</p>
+                        </div>
+                        <div class="filters-container">
+                            <select class="select-input" id="filter-type">
+                                <option value="all">All Types</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                            <select class="select-input" id="filter-category">
+                                <option value="all">All Categories</option>
+                                <!-- Populated dynamically by JS -->
+                            </select>
+                            <select class="select-input" id="sort-order">
+                                <option value="date-desc">Newest First</option>
+                                <option value="date-asc">Oldest First</option>
+                                <option value="amount-desc">Highest Amount</option>
+                                <option value="amount-asc">Lowest Amount</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive full-height">
+                            <table class="transaction-table">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactions-list-rows">
+                                    <!-- Populated dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Budgets & Categories View -->
+            <section class="view-section" id="view-budgets">
+                <div class="budgets-view-grid">
+                    <!-- Left: Budget settings list -->
+                    <div class="dashboard-card glass">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Manage Categories</h3>
+                                <p class="card-subtitle">Set monthly budgets for individual categories</p>
+                            </div>
+                            <div class="header-actions" style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-secondary" id="btn-open-bulk-modal" style="padding: 0.75rem 1rem;">
+                                    <i data-lucide="edit"></i>
+                                    <span>Bulk Edit</span>
+                                </button>
+                                <button class="btn btn-primary" id="btn-open-category-modal-direct" style="padding: 0.75rem 1rem;">
+                                    <i data-lucide="plus"></i>
+                                    <span>New Category</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body scrollable-container" id="manage-categories-list">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Budget Performance Summary -->
+                    <div class="dashboard-card glass">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Budget Efficiency</h3>
+                                <p class="card-subtitle">Spent vs Budget per category</p>
+                            </div>
+                        </div>
+                        <div class="card-body chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="budget-bar-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- TRANSACTION MODAL (Add/Edit) -->
+    <div class="modal-overlay" id="transaction-modal">
+        <div class="modal glass animate-slide-up">
+            <div class="modal-header">
+                <h3 class="modal-title" id="transaction-modal-title">Add Transaction</h3>
+                <button class="btn-close" id="btn-close-transaction-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="transaction-form" class="modal-form">
+                <input type="hidden" id="transaction-id">
+                
+                <div class="form-group">
+                    <label for="trans-desc">Description</label>
+                    <input type="text" id="trans-desc" required placeholder="e.g. Grocery shopping, Salary, Netflix subscription">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="trans-type">Type</label>
+                        <select id="trans-type" class="select-input" required>
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trans-amount">Amount ($)</label>
+                        <input type="number" id="trans-amount" min="0.01" step="0.01" required placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="trans-category">Category</label>
+                        <select id="trans-category" class="select-input" required>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trans-date">Date</label>
+                        <input type="date" id="trans-date" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-transaction-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CATEGORY MODAL (Add/Edit) -->
+    <div class="modal-overlay" id="category-modal">
+        <div class="modal glass animate-slide-up">
+            <div class="modal-header">
+                <h3 class="modal-title" id="category-modal-title">Add Category & Budget</h3>
+                <button class="btn-close" id="btn-close-category-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="category-form" class="modal-form">
+                <input type="hidden" id="category-id">
+
+                <div class="form-group">
+                    <label for="cat-name">Category Name</label>
+                    <input type="text" id="cat-name" required placeholder="e.g. Dining Out, Gym, Subscriptions">
+                </div>
+
+                <div class="form-group">
+                    <label for="cat-budget">Monthly Budget Limit ($)</label>
+                    <input type="number" id="cat-budget" min="0" step="1" required placeholder="e.g. 200 (Set to 0 for no limit)">
+                    <small class="form-help">Set to 0 if this category doesn't have a spending limit.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Accent Color</label>
+                    <div class="color-palette-picker">
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#6366f1" checked>
+                            <span class="color-swatch" style="background-color: #6366f1;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#3b82f6">
+                            <span class="color-swatch" style="background-color: #3b82f6;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#10b981">
+                            <span class="color-swatch" style="background-color: #10b981;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#f59e0b">
+                            <span class="color-swatch" style="background-color: #f59e0b;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#ef4444">
+                            <span class="color-swatch" style="background-color: #ef4444;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#ec4899">
+                            <span class="color-swatch" style="background-color: #ec4899;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#a855f7">
+                            <span class="color-swatch" style="background-color: #a855f7;"></span>
+                        </label>
+                        <label class="color-swatch-wrapper">
+                            <input type="radio" name="cat-color" value="#06b6d4">
+                            <span class="color-swatch" style="background-color: #06b6d4;"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cat-icon">Icon</label>
+                    <select id="cat-icon" class="select-input" required>
+                        <option value="shopping-bag">Shopping Bag</option>
+                        <option value="utensils">Food & Dining (Utensils)</option>
+                        <option value="home">Housing / Rent (Home)</option>
+                        <option value="car">Transportation (Car)</option>
+                        <option value="tv">Entertainment (TV)</option>
+                        <option value="activity">Health & Gym (Activity)</option>
+                        <option value="wrench">Utilities / Maintenance (Wrench)</option>
+                        <option value="graduation-cap">Education (Graduation Cap)</option>
+                        <option value="gift">Gifts & Charity (Gift)</option>
+                        <option value="briefcase">Salary / Business (Briefcase)</option>
+                        <option value="trending-up">Investments (Trending Up)</option>
+                        <option value="help-circle">Other (Question Mark)</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-category-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal-overlay" id="confirm-delete-modal">
+        <div class="modal glass animate-slide-up max-w-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Deletion</h3>
+            </div>
+            <div class="modal-body py-4">
+                <p>Are you sure you want to delete this item? This action cannot be undone.</p>
+                <p class="text-danger mt-2" id="delete-warning-text"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BULK CATEGORIES & BALANCE MODAL -->
+    <div class="modal-overlay" id="bulk-modal">
+        <div class="modal glass animate-slide-up" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Bulk Edit Categories & Starting Balance</h3>
+                <button class="btn-close" id="btn-close-bulk-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body py-4 scrollable-container" style="max-height: 450px; padding: 1.5rem; display: block; overflow-y: auto;">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="bulk-starting-balance" style="font-size: 0.85rem; font-weight: 600;">Manual Starting Balance ($)</label>
+                    <input type="number" id="bulk-starting-balance" min="0" step="0.01" class="select-input" style="max-width: 250px; margin-top: 0.5rem;" placeholder="0.00">
+                    <small class="form-help" style="display: block; margin-top: 0.25rem;">This manual amount will be added to your total net balance calculation.</small>
+                </div>
+                
+                <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.75rem;">Categories Sheet</label>
+                <div class="table-responsive">
+                    <table class="transaction-table" id="bulk-edit-table" style="min-width: 600px;">
+                        <thead>
+                            <tr>
+                                <th>Category Name</th>
+                                <th>Budget Limit ($)</th>
+                                <th>Color</th>
+                                <th>Icon</th>
+                                <th style="width: 60px; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-categories-rows">
+                            <!-- Dynamic rows loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <button type="button" class="btn btn-secondary" id="btn-bulk-add-row" style="margin-top: 1rem; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                    <i data-lucide="plus"></i>
+                    <span>Add Category Row</span>
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-bulk-modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-save-bulk">Save All Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- App Logic JS -->
+    <script src="app.js"></script>
+</body>
+</html>
