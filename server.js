@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -50,6 +51,30 @@ async function connectDatabase() {
         // Test connection
         const conn = await pool.getConnection();
         console.log(`Successfully connected to MySQL database: "${dbName}"`);
+        
+        // Auto-initialize database tables if settings table doesn't exist
+        const [tables] = await conn.query("SHOW TABLES LIKE 'settings'");
+        if (tables.length === 0) {
+            console.log('Database tables not found. Initializing schema from schema.sql...');
+            const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+            // Clean comments and split statements
+            const statements = schemaSql
+                .replace(/\r?\n/g, ' ')
+                .split(';')
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+            
+            for (const stmt of statements) {
+                const lowerStmt = stmt.toLowerCase();
+                // Skip database creation and selection statements on managed cloud instances
+                if (connectionString && (lowerStmt.startsWith('create database') || lowerStmt.startsWith('use '))) {
+                    continue;
+                }
+                await conn.query(stmt);
+            }
+            console.log('Database tables successfully created and initialized!');
+        }
+        
         conn.release();
     } catch (err) {
         console.error('MySQL database connection failed!');
