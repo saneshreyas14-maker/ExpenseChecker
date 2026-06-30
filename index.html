@@ -47,10 +47,14 @@
                     <i data-lucide="check-square"></i>
                     <span>Planner & Notes</span>
                 </button>
+                <button class="nav-item" id="btn-nav-admin" style="display: none;">
+                    <i data-lucide="shield-check"></i>
+                    <span>Admin Panel</span>
+                </button>
             </nav>
 
             <div class="sidebar-footer">
-                <div class="quick-stats-mini">
+                <div class="quick-stats-mini mb-4" style="margin-bottom: 1rem;">
                     <div class="mini-stat">
                         <span class="mini-label">Savings Rate</span>
                         <span class="mini-value" id="mini-savings-rate">0%</span>
@@ -58,6 +62,19 @@
                     <div class="progress-bar-container mini">
                         <div class="progress-bar" id="mini-savings-progress" style="width: 0%"></div>
                     </div>
+                </div>
+                
+                <div class="user-profile-card" id="user-profile-card">
+                    <div class="user-avatar">
+                        <i data-lucide="user"></i>
+                    </div>
+                    <div class="user-info">
+                        <span class="username-display" id="username-display">Guest</span>
+                        <span class="user-role-badge" id="user-role-badge">User</span>
+                    </div>
+                    <button class="btn-logout" id="btn-logout" title="Sign Out">
+                        <i data-lucide="log-out"></i>
+                    </button>
                 </div>
             </div>
         </aside>
@@ -377,6 +394,75 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Admin Panel View -->
+            <section class="view-section" id="view-admin">
+                <!-- Admin Stats Grid -->
+                <div class="stats-grid mb-6" style="margin-bottom: 1.5rem;">
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Users</span>
+                            <div class="stat-icon-wrapper balance">
+                                <i data-lucide="users"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="admin-stat-users">0</div>
+                        <div class="stat-trend text-muted">Registered in database</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Transactions</span>
+                            <div class="stat-icon-wrapper budget">
+                                <i data-lucide="arrow-right-left"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="admin-stat-transactions">0</div>
+                        <div class="stat-trend text-muted">Across all accounts</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-title">Total System Volume</span>
+                            <div class="stat-icon-wrapper income">
+                                <i data-lucide="indian-rupee"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value text-success" id="admin-stat-volume">₹0.00</div>
+                        <div class="stat-trend text-success">Total logged cashflow</div>
+                    </div>
+                </div>
+
+                <!-- User Management Card -->
+                <div class="dashboard-card glass">
+                    <div class="card-header stack-mobile">
+                        <div>
+                            <h3 class="card-title">User Management</h3>
+                            <p class="card-subtitle">Manage system users, roles, and credentials</p>
+                        </div>
+                        <button class="btn btn-primary" id="btn-admin-add-user">
+                            <i data-lucide="user-plus"></i>
+                            <span>Create New User</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="transaction-table">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th>Registered Date</th>
+                                        <th>Activity Stats</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-rows">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -579,6 +665,82 @@
                 <button type="button" class="btn btn-secondary" id="btn-cancel-bulk-modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="btn-save-bulk">Save All Changes</button>
             </div>
+        </div>
+    </div>
+
+    <!-- AUTHENTICATION CONTAINER (LOGIN / REGISTER) -->
+    <div class="auth-container-overlay active" id="auth-container-overlay">
+        <div class="auth-card glass animate-slide-up">
+            <div class="auth-header">
+                <div class="brand-logo-container">
+                    <div class="brand-logo">
+                        <i data-lucide="wallet" class="brand-icon"></i>
+                    </div>
+                </div>
+                <h2>AuraBudget</h2>
+                <p id="auth-subtitle">Sign in to manage your smart personal finance</p>
+            </div>
+            
+            <form id="auth-form" class="modal-form">
+                <div class="form-group">
+                    <label for="auth-username">Username</label>
+                    <input type="text" id="auth-username" required placeholder="Enter username (min 3 characters)" autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" required placeholder="Enter password (min 4 characters)" autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btn-auth-submit" style="width: 100%; margin-top: 1rem; padding: 0.85rem; display: block; text-align: center; justify-content: center;">
+                    <span>Sign In</span>
+                </button>
+            </form>
+
+            <div class="auth-toggle" style="margin-top: 1.5rem; text-align: center; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Don't have an account?</span>
+                <button class="btn btn-text" id="btn-toggle-auth" style="padding: 0; font-weight: 600; margin-left: 0.25rem; color: var(--primary);">
+                    Create Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN USER MODAL (Add/Edit User) -->
+    <div class="modal-overlay" id="admin-user-modal">
+        <div class="modal glass animate-slide-up">
+            <div class="modal-header">
+                <h3 class="modal-title" id="admin-user-modal-title">Create User</h3>
+                <button class="btn-close" id="btn-close-admin-user-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="admin-user-form" class="modal-form">
+                <input type="hidden" id="admin-user-id">
+                
+                <div class="form-group">
+                    <label for="admin-username-input">Username</label>
+                    <input type="text" id="admin-username-input" required placeholder="e.g. janesmith">
+                </div>
+
+                <div class="form-group" id="admin-password-group">
+                    <label for="admin-password-input">Password</label>
+                    <input type="password" id="admin-password-input" placeholder="Password (leave empty if not changing)">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-role-input">Role</label>
+                    <select id="admin-role-input" class="select-input" required>
+                        <option value="user">Standard User</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-admin-user-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-admin-user">Save User</button>
+                </div>
+            </form>
         </div>
     </div>
 

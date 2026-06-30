@@ -12,21 +12,90 @@ let state = {
     currentView: 'dashboard',
     activeTransactionId: null,
     activeCategoryId: null,
-    deleteTarget: null // { type: 'transaction'|'category', id }
+    deleteTarget: null, // { type: 'transaction'|'category', id }
+    authMode: 'login', // 'login' or 'register'
+    currentUser: null  // { id, username, role }
 };
 
 // Chart.js references
 let expenseChart = null;
 let budgetChart = null;
 
+// Global Fetch Interceptor for JWT Header injection and 401 redirect
+const originalFetch = window.fetch;
+window.fetch = async function (url, options = {}) {
+    const token = localStorage.getItem('aurabudget_token');
+    if (token) {
+        options.headers = options.headers || {};
+        if (!(options.headers instanceof Headers)) {
+            options.headers = { ...options.headers };
+            options.headers['Authorization'] = `Bearer ${token}`;
+        } else {
+            options.headers.set('Authorization', `Bearer ${token}`);
+        }
+    }
+    const response = await originalFetch(url, options);
+    if (response.status === 401) {
+        // Automatically sign out if token becomes invalid/expired
+        localStorage.removeItem('aurabudget_token');
+        localStorage.removeItem('aurabudget_user');
+        checkAuthState();
+    }
+    return response;
+};
+
 // ==========================================================================
 // Initialization & Database Sync
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    initApp();
+    checkAuthState();
     setupEventListeners();
+    setupAuthEventListeners();
 });
+
+function checkAuthState() {
+    const token = localStorage.getItem('aurabudget_token');
+    const userJson = localStorage.getItem('aurabudget_user');
+    const authOverlay = document.getElementById('auth-container-overlay');
+
+    if (!token || !userJson) {
+        state.currentUser = null;
+        authOverlay.classList.add('active');
+        document.querySelector('.app-container').style.display = 'none';
+        lucide.createIcons();
+        return;
+    }
+
+    try {
+        state.currentUser = JSON.parse(userJson);
+        authOverlay.classList.remove('active');
+        document.querySelector('.app-container').style.display = 'flex';
+        
+        // Show Profile Card
+        document.getElementById('username-display').textContent = state.currentUser.username;
+        const roleBadge = document.getElementById('user-role-badge');
+        roleBadge.textContent = state.currentUser.role;
+        roleBadge.className = 'user-role-badge ' + state.currentUser.role;
+        
+        // Show Admin Nav Link if user is Admin
+        const adminBtn = document.getElementById('btn-nav-admin');
+        if (state.currentUser.role === 'admin') {
+            adminBtn.style.display = 'flex';
+        } else {
+            adminBtn.style.display = 'none';
+        }
+
+        initApp();
+    } catch (e) {
+        localStorage.removeItem('aurabudget_token');
+        localStorage.removeItem('aurabudget_user');
+        state.currentUser = null;
+        authOverlay.classList.add('active');
+        document.querySelector('.app-container').style.display = 'none';
+        lucide.createIcons();
+    }
+}
 
 async function initApp() {
     // Current date representation
@@ -108,6 +177,10 @@ function switchView(viewName) {
         document.getElementById('btn-nav-planner').classList.add('active');
         document.getElementById('view-planner').classList.add('active');
         renderPlannerView();
+    } else if (viewName === 'admin') {
+        document.getElementById('btn-nav-admin').classList.add('active');
+        document.getElementById('view-admin').classList.add('active');
+        renderAdminView();
     }
 
     lucide.createIcons();
@@ -882,7 +955,9 @@ function setupEventListeners() {
     document.getElementById('btn-nav-transactions').addEventListener('click', () => switchView('transactions'));
     document.getElementById('btn-nav-budgets').addEventListener('click', () => switchView('budgets'));
     document.getElementById('btn-nav-planner').addEventListener('click', () => switchView('planner'));
+    document.getElementById('btn-nav-admin').addEventListener('click', () => switchView('admin'));
     document.getElementById('btn-view-all-transactions').addEventListener('click', () => switchView('transactions'));
+    document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
     // Transaction Modal Controls
     document.getElementById('btn-open-transaction-modal').addEventListener('click', () => {
@@ -1456,3 +1531,330 @@ function showToast(message, type = 'info') {
         }, 400);
     }, 3500);
 }
+
+// ==========================================================================
+// Authentication UI Events & Operations
+// ==========================================================================
+
+function setupAuthEventListeners() {
+    document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
+    document.getElementById('btn-toggle-auth').addEventListener('click', toggleAuthMode);
+    
+    // Admin user modal triggers
+    const addUserBtn = document.getElementById('btn-admin-add-user');
+    if (addUserBtn) {
+        addUserBtn.addEventListener('click', () => openAdminUserModal());
+    }
+    const closeUserModalBtn = document.getElementById('btn-close-admin-user-modal');
+    if (closeUserModalBtn) {
+        closeUserModalBtn.addEventListener('click', closeAdminUserModal);
+    }
+    const cancelUserModalBtn = document.getElementById('btn-cancel-admin-user-modal');
+    if (cancelUserModalBtn) {
+        cancelUserModalBtn.addEventListener('click', closeAdminUserModal);
+    }
+    const adminUserForm = document.getElementById('admin-user-form');
+    if (adminUserForm) {
+        adminUserForm.addEventListener('submit', handleAdminUserSubmit);
+    }
+}
+
+function toggleAuthMode() {
+    const title = document.querySelector('.auth-header h2');
+    const subtitle = document.getElementById('auth-subtitle');
+    const submitBtnSpan = document.querySelector('#btn-auth-submit span');
+    const toggleBtn = document.getElementById('btn-toggle-auth');
+    const toggleSpan = document.querySelector('.auth-toggle span');
+
+    if (state.authMode === 'login') {
+        state.authMode = 'register';
+        title.textContent = 'Create AuraBudget Account';
+        subtitle.textContent = 'Get started with smart personal finance tracking';
+        submitBtnSpan.textContent = 'Sign Up';
+        toggleSpan.textContent = 'Already have an account?';
+        toggleBtn.textContent = 'Sign In';
+    } else {
+        state.authMode = 'login';
+        title.textContent = 'Welcome to AuraBudget';
+        subtitle.textContent = 'Sign in to manage your smart personal finance';
+        submitBtnSpan.textContent = 'Sign In';
+        toggleSpan.textContent = "Don't have an account?";
+        toggleBtn.textContent = 'Create Account';
+    }
+}
+
+async function handleAuthSubmit(e) {
+    e.preventDefault();
+    const username = document.getElementById('auth-username').value.trim();
+    const password = document.getElementById('auth-password').value;
+
+    if (!username || !password) {
+        showToast('Please enter both username and password.', 'warning');
+        return;
+    }
+
+    const url = state.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+    const payload = { username, password };
+
+    try {
+        const res = await originalFetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Authentication failed');
+        }
+
+        if (state.authMode === 'register') {
+            showToast('Registration successful! Please sign in.', 'success');
+            state.authMode = 'login';
+            toggleAuthMode();
+            document.getElementById('auth-password').value = '';
+        } else {
+            // Login success
+            localStorage.setItem('aurabudget_token', data.token);
+            localStorage.setItem('aurabudget_user', JSON.stringify(data.user));
+            
+            showToast('Welcome back, ' + data.user.username + '!', 'success');
+            
+            document.getElementById('auth-username').value = '';
+            document.getElementById('auth-password').value = '';
+            
+            checkAuthState();
+        }
+    } catch (err) {
+        console.error(err);
+        showToast(err.message, 'danger');
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('aurabudget_token');
+    localStorage.removeItem('aurabudget_user');
+    state.currentUser = null;
+    
+    // Reset state values
+    state.categories = [];
+    state.transactions = [];
+    state.notes = [];
+    state.tasks = [];
+    state.startingBalance = 0.00;
+    
+    // Clear charts
+    if (expenseChart) expenseChart.destroy();
+    if (budgetChart) budgetChart.destroy();
+    expenseChart = null;
+    budgetChart = null;
+
+    showToast('Signed out successfully.', 'info');
+    checkAuthState();
+}
+
+// ==========================================================================
+// Administrative View & User Management Controls
+// ==========================================================================
+
+async function renderAdminView() {
+    if (!state.currentUser || state.currentUser.role !== 'admin') {
+        switchView('dashboard');
+        return;
+    }
+
+    try {
+        // 1. Load aggregated system stats
+        const statsRes = await fetch('/api/admin/stats');
+        if (!statsRes.ok) throw new Error('Failed to load system stats');
+        const stats = await statsRes.json();
+
+        document.getElementById('admin-stat-users').textContent = stats.totalUsers;
+        document.getElementById('admin-stat-transactions').textContent = stats.totalTransactions;
+        document.getElementById('admin-stat-volume').textContent = formatCurrency(stats.totalVolume);
+
+        // 2. Load users table
+        const usersRes = await fetch('/api/admin/users');
+        if (!usersRes.ok) throw new Error('Failed to load users');
+        const users = await usersRes.json();
+
+        const tbody = document.getElementById('admin-users-rows');
+        tbody.innerHTML = '';
+
+        if (users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No registered users.</td></tr>`;
+            return;
+        }
+
+        users.forEach(u => {
+            const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A';
+            const badgeClass = u.role === 'admin' ? 'admin' : 'user';
+            
+            // Stats summary string
+            const statsSummary = `${u.transactions_count} tx, ${u.notes_count} notes, ${u.tasks_count} tasks`;
+            
+            const isSelf = u.id === state.currentUser.id;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <span style="font-weight: 600; color: var(--text-primary);">${escapeHtml(u.username)} ${isSelf ? '<span style="font-size: 0.75rem; color: var(--primary-light);">(You)</span>' : ''}</span>
+                </td>
+                <td>
+                    <span class="user-badge-cell ${badgeClass}">${u.role}</span>
+                </td>
+                <td>${dateStr}</td>
+                <td style="color: var(--text-muted); font-size: 0.85rem;">${statsSummary}</td>
+                <td>
+                    <div class="category-actions">
+                        <button class="btn-icon-sm edit" onclick="openAdminUserModal('${u.id}')" title="Edit Credentials/Role">
+                            <i data-lucide="edit-3"></i>
+                        </button>
+                        ${!isSelf ? `
+                            <button class="btn-icon-sm delete" onclick="deleteUser('${u.id}')" title="Delete User">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        lucide.createIcons();
+    } catch (err) {
+        console.error(err);
+        showToast('Error loading administrative workspace.', 'danger');
+    }
+}
+
+async function openAdminUserModal(editId = null) {
+    const modal = document.getElementById('admin-user-modal');
+    const title = document.getElementById('admin-user-modal-title');
+    const form = document.getElementById('admin-user-form');
+
+    form.reset();
+
+    if (editId) {
+        title.textContent = 'Edit User Credentials & Role';
+        document.getElementById('admin-user-id').value = editId;
+        
+        // Fetch users to populate details
+        try {
+            const res = await fetch('/api/admin/users');
+            if (!res.ok) throw new Error('Failed to load user info');
+            const users = await res.json();
+            const u = users.find(item => item.id === editId);
+            if (u) {
+                document.getElementById('admin-username-input').value = u.username;
+                document.getElementById('admin-username-input').disabled = true; // Username is immutable
+                document.getElementById('admin-role-input').value = u.role;
+                
+                // If editing self, disable role field to prevent self-demotion
+                if (u.id === state.currentUser.id) {
+                    document.getElementById('admin-role-input').disabled = true;
+                } else {
+                    document.getElementById('admin-role-input').disabled = false;
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    } else {
+        title.textContent = 'Create User';
+        document.getElementById('admin-user-id').value = '';
+        document.getElementById('admin-username-input').value = '';
+        document.getElementById('admin-username-input').disabled = false;
+        document.getElementById('admin-role-input').value = 'user';
+        document.getElementById('admin-role-input').disabled = false;
+        document.getElementById('admin-password-input').required = true;
+    }
+
+    modal.classList.add('active');
+    lucide.createIcons();
+}
+
+function closeAdminUserModal() {
+    document.getElementById('admin-user-modal').classList.remove('active');
+}
+
+async function handleAdminUserSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('admin-user-id').value;
+    const username = document.getElementById('admin-username-input').value.trim();
+    const password = document.getElementById('admin-password-input').value;
+    const role = document.getElementById('admin-role-input').value;
+
+    if (!id && !password) {
+        showToast('Password is required for new users.', 'warning');
+        return;
+    }
+
+    try {
+        if (id) {
+            // Edit user
+            const payload = { role };
+            if (password) payload.password = password;
+
+            const res = await fetch(`/api/admin/users/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to update user');
+            }
+
+            showToast('User credentials updated successfully!', 'success');
+        } else {
+            // Create user
+            const payload = { username, password, role };
+            const res = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to create user');
+            }
+
+            showToast('User created successfully!', 'success');
+        }
+
+        closeAdminUserModal();
+        renderAdminView();
+    } catch (err) {
+        console.error(err);
+        showToast(err.message, 'danger');
+    }
+}
+
+window.deleteUser = async function(userId) {
+    if (confirm('Are you sure you want to delete this user? This will permanently delete all of their budgets, transactions, notes, and tasks. This action cannot be undone.')) {
+        try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to delete user');
+            }
+
+            showToast('User and associated data deleted successfully.', 'info');
+            renderAdminView();
+        } catch (err) {
+            console.error(err);
+            showToast(err.message, 'danger');
+        }
+    }
+};
+
+window.openAdminUserModal = function(id) {
+    openAdminUserModal(id);
+};
+

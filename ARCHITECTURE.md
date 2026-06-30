@@ -12,14 +12,17 @@ The application implements a classic **Monolithic Single-Server Architecture** w
 graph TD
     subgraph Client Layer "Client Layer (SPA Frontend)"
         UI[index.html / CSS] <--> Controller[app.js]
+        Controller -->|Auth / Headers interceptor| Auth[JWT Client Storage]
         Controller -->|Chart rendering| Charts[Chart.js via CDN]
         Controller -->|Icons| Lucide[Lucide Icons via CDN]
     end
 
     subgraph Server Layer "Server Layer (Express Backend)"
         API[server.js - Express]
+        Middleware[authenticateToken Middleware]
         Static[Static File Router]
-        DBInit[Database Safe Schema Checker]
+        DBInit[Database Safe Schema & Migration Handler]
+        API --> Middleware
     end
 
     subgraph Database Layer "Database Layer (Data Store)"
@@ -29,13 +32,14 @@ graph TD
     Controller <-->|REST API JSON / HTTP| API
     Controller <-->|Serves static files| Static
     API <-->|mysql2 connection pool| MySQL
-    DBInit -->|Validates & creates tables| MySQL
+    DBInit -->|Validates, creates & migrates tables| MySQL
 ```
 
 ### Key Architectural Concepts:
-* **Single-Page Application (SPA)**: The browser loads `index.html` once. View switching between the Dashboard, Transactions, Budgets, and Planner sections is handled dynamically by `app.js` by manipulating the DOM (avoiding page reloads).
-* **Stateless API Server**: `server.js` serves as a REST API gateway. It receives JSON requests from the frontend, executes queries on the database pool, and returns structured JSON responses.
-* **Auto-Initialization (Migration-less)**: On boot, the server queries the database schema, checks for missing tables, and executes non-destructive queries from `schema.sql` if tables are missing. This makes deployment plug-and-play without manual migration steps.
+* **Single-Page Application (SPA)**: The browser loads `index.html` once. View switching between the Dashboard, Transactions, Budgets, Planner, and Admin sections is handled dynamically by `app.js` by manipulating the DOM (avoiding page reloads).
+* **Multi-Tenant JWT Isolation**: Sessions are secured using JSON Web Tokens (JWT). The frontend's `fetch` API is globally intercepted to inject the token. All endpoints filter database queries dynamically by the authenticated user's ID.
+* **Admin & User Role Permissions**: A dedicated Admin Panel is rendered in the UI for users with the `admin` role, providing system metrics and user management tools (creation, password reset, role editing, and account deletion with cascades).
+* **Incremental Database Migration**: On boot, the server queries table schemas. If legacy tables exist but lack user-ownership columns, the database automatically alters the tables and assigns legacy records to the first registered admin user to prevent data loss.
 
 ---
 
@@ -44,7 +48,7 @@ graph TD
 ### Frontend (Client-side)
 * **Structure & Markup**: HTML5 (Semantic elements)
 * **Styling**: Vanilla CSS3 (featuring custom CSS properties, flexbox/grid layout systems, glassmorphism, and responsive breakpoints).
-* **Logic**: Vanilla ES6+ JavaScript (leveraging async/await `fetch` APIs for database communication).
+* **Logic**: Vanilla ES6+ JavaScript (leveraging a global fetch interceptor and JWT token handling).
 * **Libraries (via CDN)**:
   * **[Chart.js](https://www.chartjs.org/)**: Renders interactive budget bar charts and expense distribution donut charts.
   * **[Lucide Icons](https://lucide.dev/)**: Dynamic vector icon renderer.
@@ -53,16 +57,21 @@ graph TD
 * **Runtime**: [Node.js](https://nodejs.org/) (Version 20+ recommended)
 * **Framework**: [Express](https://expressjs.com/) (Web framework handling static file hosting and routing).
 * **Database Driver**: `mysql2/promise` (Provides a promise-based client supporting connection pooling and async/await syntax).
+* **Libraries**:
+  * `jsonwebtoken` (Generates and signs JWT authentication tokens)
+  * `crypto` (Native PBKDF2 password hashing & salting module)
 * **Environment Configuration**: `dotenv` (Loads config credentials from a `.env` file or environment variables).
 
 ### Database Layer
 * **Storage Engine**: [MySQL](https://www.mysql.com/) (InnoDB engine supporting relational tables and foreign keys).
-* **Schema Definition**: `schema.sql` defines five key tables:
-  1. `settings`: Key-value configuration store (starting balance).
-  2. `categories`: Custom expense categories with color, icon, and budget limits.
-  3. `transactions`: Expense/Income statements linked to categories via foreign keys.
-  4. `personal_notes`: Stream of notes and reminders.
-  5. `checklist_tasks`: Interactive checklist system.
+* **Schema Definition**: `schema.sql` defines six key tables:
+  1. `users`: Credentials, password hash, and user role metadata.
+  2. `settings`: Key-value configuration store per user (starting balance).
+  3. `categories`: Custom expense categories with color, icon, and budget limits per user.
+  4. `transactions`: Expense/Income statements linked to categories and users.
+  5. `personal_notes`: Stream of notes and reminders per user.
+  6. `checklist_tasks`: Interactive checklist system per user.
+
 
 ---
 
@@ -105,7 +114,8 @@ sequenceDiagram
    * A build container parses the `Dockerfile` to compile the image.
    * Environment variables (like `DATABASE_URL` or `MYSQL_URL`) are injected into the hosting container dashboard.
 
-4. **Startup Schema Auto-Sync**:
+4. **Startup Schema & Multi-Tenant Auto-Migration**:
    * During server boot-up, `server.js` initiates the database connection pool.
-   * The server runs safe validation checks to verify if all 5 schema tables exist.
-   * If any table is missing, the backend runs the non-destructive SQL parser to execute the statements in `schema.sql` sequentially, updating the schema without affecting preexisting user data.
+   * The server runs safe validation checks to verify if all required tables (`users`, `settings`, `categories`, `transactions`, `personal_notes`, `checklist_tasks`) exist in the database.
+   * If any table is missing, the backend runs the non-destructive SQL parser to execute `schema.sql` sequentially.
+   * The server then runs incremental migration scripts to check for the presence of the `user_id` column. If missing, it dynamically alters the tables and assigns legacy records to the first registered admin user, preventing any loss of pre-existing user data.
