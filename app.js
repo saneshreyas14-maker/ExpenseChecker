@@ -833,7 +833,7 @@ function renderBudgetBarChart() {
                         color: '#94a3b8',
                         font: { family: 'Plus Jakarta Sans', size: 10 },
                         callback: function(value) {
-                            return '$' + value;
+                            return '₹' + value;
                         }
                     }
                 },
@@ -1392,9 +1392,9 @@ async function handleChecklistFormSubmit(e) {
 // ==========================================================================
 
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'INR'
     }).format(amount);
 }
 
