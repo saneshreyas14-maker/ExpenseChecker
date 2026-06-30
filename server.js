@@ -52,13 +52,28 @@ async function connectDatabase() {
         const conn = await pool.getConnection();
         console.log(`Successfully connected to MySQL database: "${dbName}"`);
         
-        // Auto-initialize database tables if settings table doesn't exist
-        const [tables] = await conn.query("SHOW TABLES LIKE 'settings'");
-        if (tables.length === 0) {
-            console.log('Database tables not found. Initializing schema from schema.sql...');
+        // Auto-initialize database tables if any required table is missing
+        const requiredTables = ['settings', 'categories', 'transactions', 'personal_notes', 'checklist_tasks'];
+        let someTableMissing = false;
+        for (const table of requiredTables) {
+            const [rows] = await conn.query(`SHOW TABLES LIKE '${table}'`);
+            if (rows.length === 0) {
+                someTableMissing = true;
+                console.log(`Database table "${table}" is missing.`);
+                break;
+            }
+        }
+
+        if (someTableMissing) {
+            console.log('One or more required database tables are missing. Running schema.sql safe initialization...');
             const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-            // Clean comments and split statements
-            const statements = schemaSql
+            // Clean comments (both multiline and single-line comments)
+            const cleanedSql = schemaSql
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                .replace(/--.*$/gm, '');
+            
+            // Split statements
+            const statements = cleanedSql
                 .replace(/\r?\n/g, ' ')
                 .split(';')
                 .map(s => s.trim())
@@ -72,7 +87,7 @@ async function connectDatabase() {
                 }
                 await conn.query(stmt);
             }
-            console.log('Database tables successfully created and initialized!');
+            console.log('Missing database tables successfully created and initialized!');
         }
         
         conn.release();
