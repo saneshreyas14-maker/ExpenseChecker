@@ -689,7 +689,18 @@
                 
                 <div class="form-group">
                     <label for="auth-password">Password</label>
-                    <input type="password" id="auth-password" required placeholder="Enter password (min 4 characters)" autocomplete="current-password">
+                    <input type="password" id="auth-password" required placeholder="Enter password" autocomplete="current-password">
+                </div>
+
+                <div class="password-requirements" id="password-requirements" style="display: none;">
+                    <span class="requirements-title">Password must contain:</span>
+                    <ul class="requirements-list">
+                        <li id="req-length" class="invalid"><i data-lucide="circle" class="req-icon"></i> <span>At least 8 characters</span></li>
+                        <li id="req-uppercase" class="invalid"><i data-lucide="circle" class="req-icon"></i> <span>An uppercase letter (A-Z)</span></li>
+                        <li id="req-lowercase" class="invalid"><i data-lucide="circle" class="req-icon"></i> <span>A lowercase letter (a-z)</span></li>
+                        <li id="req-number" class="invalid"><i data-lucide="circle" class="req-icon"></i> <span>A number (0-9)</span></li>
+                        <li id="req-special" class="invalid"><i data-lucide="circle" class="req-icon"></i> <span>A special character (@$!%*?&)</span></li>
+                    </ul>
                 </div>
 
                 <button type="submit" class="btn btn-primary" id="btn-auth-submit" style="width: 100%; margin-top: 1rem; padding: 0.85rem; display: block; text-align: center; justify-content: center;">

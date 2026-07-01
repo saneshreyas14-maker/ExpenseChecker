@@ -1544,6 +1544,13 @@ function setupAuthEventListeners() {
     document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
     document.getElementById('btn-toggle-auth').addEventListener('click', toggleAuthMode);
     
+    // Add real-time password strength check
+    document.getElementById('auth-password').addEventListener('input', (e) => {
+        if (state.authMode === 'register') {
+            validatePasswordLive(e.target.value);
+        }
+    });
+
     // Admin user modal triggers
     const addUserBtn = document.getElementById('btn-admin-add-user');
     if (addUserBtn) {
@@ -1569,6 +1576,7 @@ function toggleAuthMode() {
     const submitBtnSpan = document.querySelector('#btn-auth-submit span');
     const toggleBtn = document.getElementById('btn-toggle-auth');
     const toggleSpan = document.querySelector('.auth-toggle span');
+    const passwordRequirements = document.getElementById('password-requirements');
 
     if (state.authMode === 'login') {
         state.authMode = 'register';
@@ -1577,6 +1585,9 @@ function toggleAuthMode() {
         submitBtnSpan.textContent = 'Sign Up';
         toggleSpan.textContent = 'Already have an account?';
         toggleBtn.textContent = 'Sign In';
+        if (passwordRequirements) passwordRequirements.style.display = 'block';
+        // Validate whatever is currently in password input
+        validatePasswordLive(document.getElementById('auth-password').value);
     } else {
         state.authMode = 'login';
         title.textContent = 'Welcome to AuraBudget';
@@ -1584,6 +1595,39 @@ function toggleAuthMode() {
         submitBtnSpan.textContent = 'Sign In';
         toggleSpan.textContent = "Don't have an account?";
         toggleBtn.textContent = 'Create Account';
+        if (passwordRequirements) passwordRequirements.style.display = 'none';
+    }
+}
+
+function validatePasswordLive(password) {
+    const checks = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[@$!%*?&]/.test(password)
+    };
+
+    updateRequirementUI('req-length', checks.length, 'At least 8 characters');
+    updateRequirementUI('req-uppercase', checks.uppercase, 'An uppercase letter (A-Z)');
+    updateRequirementUI('req-lowercase', checks.lowercase, 'A lowercase letter (a-z)');
+    updateRequirementUI('req-number', checks.number, 'A number (0-9)');
+    updateRequirementUI('req-special', checks.special, 'A special character (@$!%*?&)');
+
+    lucide.createIcons();
+    return Object.values(checks).every(Boolean);
+}
+
+function updateRequirementUI(elementId, isValid, labelText) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    
+    if (isValid) {
+        el.className = 'valid';
+        el.innerHTML = `<i data-lucide="check-circle" class="req-icon"></i> <span>${labelText}</span>`;
+    } else {
+        el.className = 'invalid';
+        el.innerHTML = `<i data-lucide="circle" class="req-icon"></i> <span>${labelText}</span>`;
     }
 }
 
@@ -1595,6 +1639,14 @@ async function handleAuthSubmit(e) {
     if (!username || !password) {
         showToast('Please enter both username and password.', 'warning');
         return;
+    }
+
+    if (state.authMode === 'register') {
+        const isValid = validatePasswordLive(password);
+        if (!isValid) {
+            showToast('Password does not meet complexity requirements.', 'warning');
+            return;
+        }
     }
 
     const url = state.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
