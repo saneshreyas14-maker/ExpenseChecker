@@ -24,6 +24,10 @@ let budgetChart = null;
 // Global Fetch Interceptor for JWT Header injection and 401 redirect
 const originalFetch = window.fetch;
 window.fetch = async function (url, options = {}) {
+    let targetUrl = url;
+    if (window.location.protocol === 'file:' && typeof url === 'string' && url.startsWith('/api')) {
+        targetUrl = 'http://localhost:3000' + url;
+    }
     const token = localStorage.getItem('aurabudget_token');
     if (token) {
         options.headers = options.headers || {};
@@ -34,7 +38,7 @@ window.fetch = async function (url, options = {}) {
             options.headers.set('Authorization', `Bearer ${token}`);
         }
     }
-    const response = await originalFetch(url, options);
+    const response = await originalFetch(targetUrl, options);
     if (response.status === 401) {
         // Automatically sign out if token becomes invalid/expired
         localStorage.removeItem('aurabudget_token');
@@ -1597,7 +1601,8 @@ async function handleAuthSubmit(e) {
     const payload = { username, password };
 
     try {
-        const res = await originalFetch(url, {
+        const targetUrl = window.location.protocol === 'file:' ? 'http://localhost:3000' + url : url;
+        const res = await originalFetch(targetUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
